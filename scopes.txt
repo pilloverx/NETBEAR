@@ -1,0 +1,169 @@
+# In-Scope Domains for Security Testing
+# Updated Jan 2026 - Includes FDJ, Doctolib, and other programs
+
+# ============ DOCTOLIB - HEALTHCARE PLATFORM ============
+# Primary target: Healthcare appointment platform
+doctolib.fr
+doctolib.de
+doctolib.es
+doctolib.it
+pro.doctolib.fr
+
+# ============ FDJ UNITED BUG BOUNTY - Main Assets (€15k) ============
+# Unibet.com variants (main assets - highest rewards)
+unibet.com
+unibet.co.uk
+unibet.se
+unibet.de
+unibet.fi
+unibet.be
+unibet.fr
+unibet.it
+unibet.es
+unibet.nl
+unibet.at
+unibet.ch
+unibet.dk
+unibet.ie
+unibet.pt
+unibet.no
+unibet.hu
+unibet.cz
+unibet.gr
+unibet.ro
+unibet.sk
+unibet.bg
+unibet.hr
+unibet.lt
+unibet.lv
+unibet.ee
+unibet.si
+unibet.mt
+unibet.lu
+unibet.pl
+unibet.ua
+unibet.kz
+unibet.by
+
+# Unibet subdomains
+payment.unibet.com
+secure.unibet.com
+api.unibet.com
+
+# Maria Casino variants
+mariacasino.com
+mariacasino.se
+mariacasino.de
+mariacasino.fi
+mariacasino.be
+mariacasino.fr
+mariacasino.it
+mariacasino.es
+mariacasino.nl
+mariacasino.at
+mariacasino.ch
+mariacasino.dk
+mariacasino.ie
+mariacasino.pt
+mariacasino.no
+
+# Maria Casino subdomains
+payment.mariacasino.com
+secure.mariacasino.com
+api.mariacasino.com
+
+# 32Red variants
+32red.com
+32red.co.uk
+32red.se
+32red.de
+32red.fi
+32red.be
+32red.fr
+32red.it
+32red.es
+32red.nl
+32red.at
+32red.ch
+32red.dk
+32red.ie
+32red.pt
+32red.no
+
+# Bingo.com
+bingo.com
+bingo.se
+bingo.de
+bingo.fi
+bingo.be
+bingo.fr
+bingo.it
+bingo.es
+bingo.nl
+bingo.at
+bingo.ch
+bingo.dk
+bingo.ie
+bingo.pt
+bingo.no
+
+# Kindred Group
+kindredgroup.com
+pci.kindredgroup.com
+
+# Other Kindred brands
+ottokasino.com
+ratting.com
+spawild.com
+casumo.com
+
+# Payment/API endpoints (core assets)
+payment.unibet.com
+payment.mariacasino.com
+payment.32red.com
+payment.bingo.com
+payment.kindredgroup.com
+
+# Additional payment domains
+pay.unibet.com
+api.unibet.com
+secure.unibet.com
+
+
+
+"""
+"""
+
+# NetBear Target List - Juice Shop + Doctolib
+# Updated Jan 2026 - Testing & Recon
+# 🎯 JUICE SHOP (Demo Target - Solve All Challenges)
+# 🏥 DOCTOLIB (Real Bug Bounty - Respect In-Scope)
+
+# ==================== JUICE SHOP (TEST ENVIRONMENT) ====================
+# Default demo creds: demo@juice.sh / demo
+# Run NetBear with auth.py login → Export to Burp → Solve challenges
+
+# Public pages (unauthenticated)
+https://juice-shop.herokuapp.com
+https://juice-shop.herokuapp.com/#/login
+https://juice-shop.herokuapp.com/#/search
+https://juice-shop.herokuapp.com/#/register
+
+# Authenticated pages (requires login)
+https://juice-shop.herokuapp.com/#/basket
+https://juice-shop.herokuapp.com/#/profile
+https://juice-shop.herokuapp.com/#/account
+https://juice-shop.herokuapp.com/#/score-board
+
+# API endpoints (from XHR analysis)
+https://juice-shop.herokuapp.com/rest/admin
+https://juice-shop.herokuapp.com/rest/products/search
+https://juice-shop.herokuapp.com/rest/user/login
+https://juice-shop.herokuapp.com/rest/basket
+https://juice-shop.herokuapp.com/rest/user/profile
+
+# Challenge endpoints (for IDOR/XXE/file upload testing)
+https://juice-shop.herokuapp.com/rest/products
+https://juice-shop.herokuapp.com/ftp
+https://juice-shop.herokuapp.com/api/Users
+

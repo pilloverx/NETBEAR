@@ -1,0 +1,7 @@
+# format: http://user:pass@ip:port
+
+http://username:password@10.11.12.13:3128
+
+http://34.56.78.90:8080
+
+socks5://12.34.56.78:1080

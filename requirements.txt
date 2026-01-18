@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+tldextract
+aiohttp
+lxml
+fake-useragent
+colorama
+playwright
+rich

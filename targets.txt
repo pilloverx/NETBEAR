@@ -1,0 +1,31 @@
+# ==================== DOCTOLIB (BUG BOUNTY TARGET) ====================
+# Updated Jan 2026 - Focus on doctor profiles, appointment logic, patient data
+# ⚠️  RESPECT IN-SCOPE DOMAINS - Check scopes.txt before testing
+
+# PRIMARY TARGETS - DOCTOLIB PUBLIC SURFACES
+#https://www.doctolib.fr
+#https://www.doctolib.fr/search
+#https://www.doctolib.fr/login
+https://pro.doctolib.fr
+
+# SECONDARY DISCOVERY ENDPOINTS (High value for IDOR/logic flaws)
+# Doctor profiles & appointment search
+#https://www.doctolib.fr/search/doctors
+https://www.doctolib.fr/search/specialists
+# Patient portal flows
+https://www.doctolib.fr/appointments
+https://www.doctolib.fr/mon-compte
+
+# FUZZING TARGETS (Parameters to test):
+# Juice Shop Targets:
+# - /rest/products?q=FUZZ  → SQLi/XSS in search
+# - /rest/basket → basketId IDOR
+# - /api/Users → userId IDOR
+# - /ftp file=FUZZ → Path traversal
+#
+# Doctolib Targets:
+# - Doctor profiles → speciality_id, doctor_id parameters
+# - Appointment search → appointment_id, patient_id parameters
+# - Booking flows → Race conditions, appointment double-booking
+# - Authentication pages → Session bypass, privilege escalation
+

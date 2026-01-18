@@ -1,0 +1,289 @@
+# NEXTCLOUD_QUICK_START.txt
+================================================================================
+                    NextCloud Vulnerability Assessment
+                         Quick Start Guide v1.0
+================================================================================
+
+INSTALLATION (First Time Only)
+================================================================================
+
+1. Navigate to workspace:
+   cd c:\Users\Agya\BOOLEAN\Netbear
+
+2. Install dependencies (if not already done):
+   pip install -r requirements.txt
+
+3. Verify installation:
+   python -c "import requests, rich, config; print('✓ All dependencies installed')"
+
+
+RUNNING THE FRAMEWORK
+================================================================================
+
+1. Start the CLI:
+   python main.py
+
+2. You'll see the main menu. Select option 2 for NextCloud
+
+
+NEXTCLOUD ASSESSMENT WORKFLOW
+================================================================================
+
+Step 1: Connection Setup
+   - NextCloud Host: https://your-nextcloud.com
+   - Username: your_username
+   - Password: your_password
+   - (Connection test runs automatically)
+
+Step 2: Select Tests
+   [1] Recon - System enumeration
+   [2] IDOR - ID enumeration tests
+   [3] Upload Abuse - File upload & RCE/XSS
+   [4] Auth Escalation - Privilege escalation
+   [5] Public Links - Share security
+   [6] All Tests (recommended for first run)
+
+Step 3: Configuration (Optional)
+   - Leave defaults or customize:
+     * IDOR sample size: 50 (increase for more thorough)
+     * Workers: 5 (concurrent connections)
+     * Rate limit: 0.5 sec (increase for stealth)
+
+Step 4: Run
+   - Tests execute automatically
+   - Real-time progress displayed
+   - Results summarized
+
+Step 5: Save Results
+   - Choose to save JSON report
+   - Reports saved to: reports/[TIMESTAMP]/nextcloud_report.json
+
+
+UNDERSTANDING RESULTS
+================================================================================
+
+Severity Levels:
+  CRITICAL  → System-wide compromise (RCE, auth bypass)
+  HIGH      → Data access/modification, privilege escalation
+  MEDIUM    → Information disclosure, limited impact
+  LOW       → Minor issues
+  INFO      → Informational findings
+
+Key Findings to Look For:
+  ✓ User enumeration          → Targets for further testing
+  ✓ IDOR vulnerabilities      → Unauthorized access
+  ✓ Upload bypasses           → Potential RCE/XSS
+  ✓ Auth escalation           → Privilege upgrade
+  ✓ Public link leaks         → Data exposure
+
+
+EXAMPLE OUTPUT
+================================================================================
+
+Session: 20260114_150000
+Mode: nextcloud
+Timestamp: 2026-01-14T15:00:00
+
+Findings:
+  - User enumeration (HIGH): 42 users discovered
+  - File ID IDOR (HIGH): 15 accessible file IDs
+  - Upload bypass (CRITICAL): PHP files executable
+  - Auth escalation (MEDIUM): Group membership bypass
+  - Public links (MEDIUM): 8 shares without password
+
+Summary:
+  Total tests: 5
+  Findings: 8
+  Critical: 1
+  High: 2
+  Medium: 2
+
+
+CONFIGURATION FILE
+================================================================================
+
+Edit config.py to customize:
+
+# Target
+NEXTCLOUD_HOST = "https://your-instance.com"
+NEXTCLOUD_VERIFY_SSL = True
+
+# Performance
+NEXTCLOUD_MAX_WORKERS = 5
+NEXTCLOUD_TIMEOUT = 30
+NEXTCLOUD_RATE_LIMIT_SEC = 0.5
+
+# IDOR Testing
+NEXTCLOUD_IDOR_SAMPLE_SIZE = 50
+
+# Upload Testing
+NEXTCLOUD_UPLOAD_TIMEOUT = 10
+NEXTCLOUD_MAX_UPLOAD_SIZE = 5242880  # 5 MB
+
+
+TIPS & TRICKS
+================================================================================
+
+1. Start with Recon to understand the system
+   → Gives you user IDs, share structure, public links
+
+2. Use results to inform other tests
+   → Known file IDs help with IDOR testing
+   → User enumeration helps with auth testing
+
+3. Increase IDOR_SAMPLE_SIZE for larger instances
+   → Default 50 is fast; try 200-500 for thorough testing
+
+4. If tests seem to timeout/fail:
+   → Increase RATE_LIMIT_SEC to 1-2 seconds
+   → Reduce MAX_WORKERS to 2-3
+   → Check network connectivity
+
+5. For stealth/evasion:
+   → Increase rate limit to 2-3 seconds
+   → Use rotating proxies via config.py PROXIES list
+   → Reduce worker count to 1-2
+
+
+BEST PRACTICES
+================================================================================
+
+BEFORE TESTING:
+  ✓ Verify you have authorization
+  ✓ Use a test account when possible
+  ✓ Avoid production during business hours
+  ✓ Note baseline performance/behavior
+
+DURING TESTING:
+  ✓ Monitor for rate limiting responses
+  ✓ Check application logs if accessible
+  ✓ Keep session IDs for reference
+  ✓ Document all findings
+
+AFTER TESTING:
+  ✓ Save JSON report as evidence
+  ✓ Test findings manually with Burp Suite
+  ✓ Prepare impact summary
+  ✓ Create remediation recommendations
+
+
+DIRECTORY STRUCTURE
+================================================================================
+
+Netbear/
+├── main.py                      ← Start here
+├── interactive_cli.py           ← CLI interface
+├── config.py                    ← Configuration
+├── nextcloud_tester.py          ← Orchestrator
+├── nextcloud/                   ← Test modules
+│   ├── nc_recon.py
+│   ├── nc_idor.py
+│   ├── nc_upload.py
+│   ├── nc_auth.py
+│   └── nc_public_links.py
+├── reports/                     ← Output directory
+│   └── [SESSION_ID]/
+│       └── nextcloud_report.json
+└── NEXTCLOUD_ASSESSMENT.md      ← Full documentation
+
+
+JSON REPORT STRUCTURE
+================================================================================
+
+{
+  "session_id": "20260114_150000",
+  "mode": "nextcloud",
+  "timestamp": "2026-01-14T15:00:00",
+  "findings": [
+    {
+      "type": "finding_type",
+      "severity": "critical|high|medium|low|info",
+      "description": "What was found",
+      "endpoint": "/api/endpoint/",
+      "impact": "Business/technical impact",
+      "count": 5,
+      "details": {...}
+    }
+  ],
+  "summary": {
+    "total_tests": 5,
+    "findings_count": 8,
+    "critical": 1,
+    "high": 2,
+    "medium": 2,
+    "low": 0
+  }
+}
+
+
+TROUBLESHOOTING
+================================================================================
+
+Issue: "Connection failed"
+  → Verify host URL (https://...)
+  → Check username/password
+  → Try: python -c "import requests; requests.get('URL')"
+
+Issue: "No findings despite vulnerabilities"
+  → Increase IDOR_SAMPLE_SIZE in config.py
+  → Decrease RATE_LIMIT_SEC to test faster
+  → Check if instance is heavily patched
+
+Issue: "Tests timing out"
+  → Increase NEXTCLOUD_TIMEOUT in config.py
+  → Reduce MAX_WORKERS
+  → Increase RATE_LIMIT_SEC
+
+Issue: "SSL certificate error"
+  → Set NEXTCLOUD_VERIFY_SSL = False in config.py
+  → Only use for self-signed certs in testing!
+
+
+NEXT STEPS
+================================================================================
+
+1. Run your first assessment:
+   python main.py
+
+2. Review findings in JSON report:
+   cat reports/[SESSION_ID]/nextcloud_report.json
+
+3. Manually verify top findings with Burp Suite
+
+4. Create PoC for each vulnerability
+
+5. Prepare report with:
+   - Screenshots/videos
+   - Step-by-step reproduction
+   - Business impact
+   - Remediation advice
+
+
+ADDITIONAL RESOURCES
+================================================================================
+
+Documentation:
+  - Full guide: NEXTCLOUD_ASSESSMENT.md
+  - Original setup: BOUNTY_SETUP.md
+  - Framework guide: QUICK_REF.md
+
+Useful Links:
+  - NextCloud Docs: https://docs.nextcloud.com/
+  - OCS API: https://docs.nextcloud.com/server/latest/developer_manual/client_apis/OCS/
+  - WebDAV: https://tools.ietf.org/html/rfc4918
+
+
+SUPPORT
+================================================================================
+
+If issues occur:
+  1. Check config.py for correct settings
+  2. Verify network connectivity
+  3. Review error messages in console
+  4. Check JSON report for detailed findings
+  5. Run recon test first to diagnose instance
+
+
+================================================================================
+                           Happy Hunting! 🔒
+================================================================================
