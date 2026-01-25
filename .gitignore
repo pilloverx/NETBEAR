@@ -1,2 +1,8 @@
 venv/
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+reports/
+auto_venv.fish

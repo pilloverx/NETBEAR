@@ -15,7 +15,7 @@ def fetch_page_with_capture(url, screenshot_path, site_dir, proxy=None, timeout=
     Fetches a webpage, saves a screenshot and trace (optional), and returns HTML + captured JS/XHR info.
     """
     html_content = ""
-    saved_resources = {"js": [], "xhr": []}
+    saved_resources = {"js": [], "xhr": [], "all_requests": []}
     last_error = None
 
     # Use random proxy if not explicitly provided
@@ -42,10 +42,27 @@ def fetch_page_with_capture(url, screenshot_path, site_dir, proxy=None, timeout=
 
                 page = context.new_page()
                 page.set_default_timeout(timeout)
+                
+                # Set a common user-agent for stealth
+                page.set_extra_http_headers({
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                })
 
                 # Capture JS and XHR requests
                 def on_response(response):
                     try:
+                        req = response.request
+                        req_info = {
+                            "method": req.method,
+                            "url": req.url,
+                            "headers": req.headers,
+                            "postData": req.post_data,
+                            "responseStatus": response.status,
+                            "responseStatusText": response.status_text,
+                            "responseHeaders": response.headers
+                        }
+                        saved_resources["all_requests"].append(req_info)
+
                         ct = response.headers.get("content-type", "")
                         
                         # High-interest keywords for this domain/target

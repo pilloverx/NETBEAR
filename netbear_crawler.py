@@ -107,15 +107,12 @@ def crawl_url(url, run_dir, proxy=None, collect_forms=True):
         
         # Parse internal/external links
         internal, external = parse_links(html, url)
-        
-        # Parse forms and parameters
-        forms_data = None
-        get_params = None
-        if collect_forms:
-            parsed = parse_forms_and_params(html, url)
-            forms_data = parsed.get("forms", [])
-            get_params = parsed.get("get_params", [])
-        
+
+        # Parse forms and params
+        parsed_data = parse_forms_and_params(html, url)
+        forms_data = parsed_data["forms"]
+        get_params = parsed_data["get_params"]
+
         # Captcha detection
         captcha_result = detect_captcha(html)
 
@@ -148,10 +145,10 @@ def crawl_url(url, run_dir, proxy=None, collect_forms=True):
         # Get internal links for depth crawling
         internal_for_depth = extract_internal_links_for_depth(html, url)
 
-        return (url, domain, "✅ Success", internal_for_depth, forms_data, get_params)
+        return (url, domain, "✅ Success", internal_for_depth, forms_data, get_params, saved_resources.get("all_requests", []))
 
     except Exception as e:
-        return (url, domain, f"❌ Failed: {str(e)}", [], None, None)
+        return (url, domain, f"❌ Failed: {str(e)}", [], None, None, [])
 
 
 def crawl_domain_with_depth(start_url, run_dir, max_depth=2, max_pages_per_domain=15, delay_sec=1.5):
@@ -181,7 +178,7 @@ def crawl_domain_with_depth(start_url, run_dir, max_depth=2, max_pages_per_domai
 
         # Single URL crawl
         result = crawl_url(url, run_dir, proxy=get_random_proxy(), collect_forms=True)
-        url_result, domain, status, internal_links, forms_data, get_params = result
+        url_result, domain, status, internal_links, forms_data, get_params, all_reqs = result
 
         domain_results.append(result)
         pages_crawled_for_domain += 1
@@ -244,7 +241,8 @@ def main():
     console.print(f"[cyan]Reports will be saved in:[/cyan] {run_dir}\n")
 
     # 4. Crawl loop with depth
-    all_results = []
+    index_entries = []
+    full_crawl_data = []
     aggregate_stats = {"total_pages": 0, "successful": 0, "failed": 0, 
                        "total_forms": 0, "total_params": 0, "total_xhr": 0}
 
@@ -268,8 +266,8 @@ def main():
 
         # Aggregate results
         for result in domain_results:
-            url_res, domain, status, _, _, _ = result
-            all_results.append((url_res, domain, status))
+            url_res, domain, status, _, _, _, _ = result
+            index_entries.append((url_res, domain, status))
             aggregate_stats["total_pages"] += 1
             if "Success" in status:
                 aggregate_stats["successful"] += 1
@@ -278,37 +276,33 @@ def main():
 
         aggregate_stats["total_forms"] += domain_stats["total_forms"]
         aggregate_stats["total_params"] += domain_stats["total_params"]
+        full_crawl_data.append(domain_results) # Store full depth results for HAR export
 
     # 5. Write session index and summary
-    append_index(INDEX_FILE, timestamp, all_results)
+    append_index(INDEX_FILE, timestamp, index_entries)
     summary_path = write_crawl_summary(run_dir, aggregate_stats)
     
     # 6. Generate HAR export for Burp import
-    all_requests = []  # Collect from domain results
+    global_requests = []
     all_params = []
     all_urls = []
     
-    for result in domain_results:
-        if len(result) >= 5:
-            _, _, _, _, forms_data, get_params = result
-            if forms_data:
-                for form in forms_data:
-                    all_requests.append({
-                        "method": form.get("method", "GET"),
-                        "url": form.get("action", ""),
-                        "headers": {"Content-Type": "application/x-www-form-urlencoded"},
-                        "postData": None
-                    })
-            if get_params:
-                all_params.extend(get_params)
-            all_urls.append(result[0])
+    for domain_batch in full_crawl_data:
+        if not isinstance(domain_batch, list): continue
+        for result in domain_batch:
+            if len(result) >= 7:
+                url_res, _, _, _, forms_data, get_params, all_reqs = result
+                if all_reqs:
+                    global_requests.extend(all_reqs)
+                if get_params:
+                    all_params.extend(get_params)
+                all_urls.append(url_res)
     
-    har_path = "N/A"  # Initialize har_path with a default value
-    if all_requests:
-        har_path = export_to_har(run_dir, all_requests)
-        curl_path = export_to_curl(run_dir, all_requests)
-        console.print(f"\n[green]✅ HAR exported:[/green] {har_path}")
-        console.print(f"[green]✅ cURL script:[/green] {curl_path}")
+    har_path = "N/A"
+    if global_requests:
+        har_path = export_to_har(run_dir, global_requests)
+        curl_path = export_to_curl(run_dir, global_requests)
+        console.print(f"\n[green]✅ Total {len(global_requests)} requests exported to HAR/cURL[/green]")
     
     # 7. Generate fuzzing guide with flagged parameters
     if all_params:
@@ -324,10 +318,10 @@ def main():
     console.print(f"[cyan]Unique GET params:[/cyan] {aggregate_stats['total_params']}")
     console.print(f"\n[underline]Reports:[/underline] {run_dir}")
     console.print(f"[underline]Summary:[/underline] {summary_path}")
-    console.print(f"[underline]HAR for Burp:[/underline] {har_path if all_requests else 'N/A'}")
+    console.print(f"[underline]HAR for Burp:[/underline] {har_path if global_requests else 'N/A'}")
     console.print("=" * 60)
     console.print(f"\n[bold cyan]💡 Next Steps:[/bold cyan]")
-    console.print(f"1. Open {har_path if all_requests else 'HAR file'} in Burp → Import to Sitemap")
+    console.print(f"1. Open {har_path if global_requests else 'HAR file'} in Burp → Import to Sitemap")
     console.print(f"2. Review FUZZING_GUIDE.txt for high-risk parameters")
     console.print(f"3. Use fuzzer.py payloads for Intruder testing")
     console.print(f"4. Check for XSS/SQLi in JS findings (js_analyser output)")

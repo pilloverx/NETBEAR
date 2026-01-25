@@ -63,6 +63,24 @@ def write_site_report(site_dir, url, domain, proxy, internal, external, red_flag
                     f.write(f"    - {v}\n")
                 if "error" in finding:
                     f.write(f"  Error: {finding['error']}\n")
+                
+                # Add XSS Sinks if found
+                if finding.get("xss_sinks"):
+                    f.write("  XSS Sinks Found:\n")
+                    for sink in finding["xss_sinks"]:
+                        f.write(f"    - {sink}\n")
+                
+                # Add Structured Patterns if found
+                structured = finding.get("structured_patterns", {})
+                if any(structured.values()):
+                    f.write("  Detected Patterns:\n")
+                    if structured.get("api_endpoints"):
+                        f.write(f"    - APIs: {', '.join(structured['api_endpoints'][:5])}\n")
+                    if structured.get("param_names"):
+                        f.write(f"    - Params: {', '.join(structured['param_names'][:5])}\n")
+                    if structured.get("high_interest_keywords"):
+                        f.write(f"    - Keywords: {', '.join(structured['high_interest_keywords'][:5])}\n")
+                
                 f.write("\n")
         else:
             f.write("No suspicious JS detected or no JS resources found.\n")
@@ -127,21 +145,43 @@ def export_to_har(run_dir, requests_list):
             for k, v in req["headers"].items():
                 headers.append({"name": k, "value": str(v)})
         
+        # Parse query string
+        from urllib.parse import urlparse, parse_qsl
+        qs = []
+        try:
+            parsed = urlparse(req.get("url", ""))
+            qs_list = parse_qsl(parsed.query)
+            qs = [{"name": k, "value": v} for k, v in qs_list]
+        except:
+            pass
+
         entry = {
+            "startedDateTime": datetime.now().isoformat() + "Z",
+            "time": 100,
             "request": {
                 "method": req.get("method", "GET"),
                 "url": req.get("url", ""),
+                "httpVersion": "HTTP/1.1",
+                "cookies": [],
                 "headers": headers,
-                "postData": req.get("postData") or None
+                "queryString": qs,
+                "postData": req.get("postData") or None,
+                "headersSize": -1,
+                "bodySize": -1
             },
             "response": {
-                "status": 0,
-                "statusText": "Unknown",
-                "headers": [],
-                "content": {"size": 0, "mimeType": "application/octet-stream"}
+                "status": req.get("responseStatus", 200),
+                "statusText": req.get("responseStatusText", "OK"),
+                "httpVersion": "HTTP/1.1",
+                "cookies": [],
+                "headers": [{"name": k, "value": v} for k, v in req.get("responseHeaders", {}).items()],
+                "content": {"size": 0, "mimeType": "application/octet-stream"},
+                "redirectURL": "",
+                "headersSize": -1,
+                "bodySize": -1
             },
             "cache": {},
-            "timings": {"wait": -1, "receive": -1, "send": -1}
+            "timings": {"wait": 50, "receive": 50, "send": 0}
         }
         har["log"]["entries"].append(entry)
     
@@ -154,14 +194,23 @@ def export_to_har(run_dir, requests_list):
 
 def export_to_curl(run_dir, requests_list):
     """
-    Export captured requests as cURL commands for easy copy-paste to Burp/terminal.
-    Generates a .sh file with all cURL commands.
+    Export captured requests as cURL commands.
+    Optimized for Burp Suite: includes --insecure and proxy settings.
     """
     curl_path = os.path.join(run_dir, "requests.sh")
+    results_dir = os.path.join(run_dir, "curl_results")
+    error_log = os.path.join(run_dir, "errors.txt")
+    
     with open(curl_path, "w", encoding="utf-8") as f:
         f.write("#!/bin/bash\n")
-        f.write("# NetBear cURL Export - Import to Burp or run directly\n")
-        f.write("# Usage: chmod +x requests.sh && ./requests.sh\n\n")
+        f.write("# NetBear cURL Export - Parallel Replay optimized for Burp\n")
+        f.write("# To use Burp, set PROXY to your Burp listener address\n")
+        f.write("PROXY=\"http://127.0.0.1:8080\"\n") 
+        f.write("parallel=10\n")
+        f.write("count=0\n")
+        f.write(f"mkdir -p '{results_dir}'\n")
+        f.write(f"rm -f '{error_log}'\n")
+        f.write("echo '[+] Starting parallel replay... results in curl_results/'\n\n")
         
         for idx, req in enumerate(requests_list, 1):
             method = req.get("method", "GET")
@@ -169,20 +218,35 @@ def export_to_curl(run_dir, requests_list):
             headers = req.get("headers", {})
             post_data = req.get("postData")
             
-            f.write(f"# Request {idx}\n")
-            f.write(f"curl -X {method} \\\n")
+            # Use absolute paths for output to avoid directory issues
+            output_file = os.path.join(results_dir, f"resp_{idx}.txt")
+            header_file = os.path.join(results_dir, f"resp_{idx}_headers.txt")
+            
+            # Build the curl command string
+            # -s (silent), -k (insecure/skip cert check), -v (verbose if debugging)
+            # Use --proxy if the variable is set
+            f.write(f"echo '({idx}/{len(requests_list)}) {method} {url}'\n")
+            f.write(f"curl -s -k -X {method} ${{PROXY:+--proxy \"$PROXY\"}} \\\n")
+            f.write(f"  -D '{header_file}' \\\n")
             f.write(f"  '{url}' \\\n")
             
-            # Add headers
             if isinstance(headers, dict):
                 for k, v in headers.items():
-                    f.write(f"  -H '{k}: {v}' \\\n")
+                    safe_v = str(v).replace("'", "'\\''")
+                    f.write(f"  -H '{k}: {safe_v}' \\\n")
             
-            # Add post data if present
             if post_data:
-                f.write(f"  -d '{post_data}'\n\n")
-            else:
-                f.write(f"\n\n")
+                if isinstance(post_data, str):
+                    safe_data = post_data.replace("'", "'\\''")
+                    f.write(f"  -d '{safe_data}' \\\n")
+            
+            f.write(f"  -o '{output_file}' || echo 'Failed request {idx}: {url}' >> '{error_log}' &\n\n")
+            
+            f.write("((count++))\n")
+            f.write("if ((count % parallel == 0)); then wait; fi\n\n")
+            
+        f.write("wait\n")
+        f.write("echo '[+] Done! Errors logged in errors.txt'\n")
     
     return curl_path
 
@@ -194,16 +258,18 @@ def export_js_structures(site_dir, js_findings):
     }
     
     for finding in js_findings:
-        if "patterns" in finding:
+        structured = finding.get("structured_patterns", {})
+        if structured:
             structures["js_files"].append({
-                "file": finding.get("file", "unknown"),
-                "size_kb": finding.get("size_kb", 0),
+                "file": os.path.basename(finding.get("path", "unknown")),
                 "tag": finding.get("tag", "normal"),
-                "api_endpoints": finding["patterns"].get("api_endpoints", []),
-                "param_names": finding["patterns"].get("param_names", []),
-                "auth_related": finding["patterns"].get("auth_related", []),
-                "high_interest_keywords": finding["patterns"].get("high_interest_keywords", []),
-                "risk_indicators": finding.get("risk_indicators", [])
+                "suspicion_score": finding.get("suspicion_score", 0),
+                "xss_score": finding.get("xss_score", 0),
+                "api_endpoints": structured.get("api_endpoints", []),
+                "param_names": structured.get("param_names", []),
+                "auth_related": structured.get("auth_related", []),
+                "high_interest_keywords": structured.get("high_interest_keywords", []),
+                "xss_sinks": finding.get("xss_sinks", [])
             })
     
     json_path = os.path.join(site_dir, "js_structures.json")

@@ -11,10 +11,10 @@ https://pro.doctolib.fr
 # SECONDARY DISCOVERY ENDPOINTS (High value for IDOR/logic flaws)
 # Doctor profiles & appointment search
 #https://www.doctolib.fr/search/doctors
-https://www.doctolib.fr/search/specialists
+#https://www.doctolib.fr/search/specialists
 # Patient portal flows
-https://www.doctolib.fr/appointments
-https://www.doctolib.fr/mon-compte
+#https://www.doctolib.fr/appointments
+#https://www.doctolib.fr/mon-compte
 
 # FUZZING TARGETS (Parameters to test):
 # Juice Shop Targets:
